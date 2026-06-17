@@ -1,14 +1,52 @@
-# fabasoad/setup-brainfuck-action
+# Setup Brainfuck
 
-This GitHub action installs one of the brainfuck interpreters called brainfucky
+![Releases](https://img.shields.io/github/v/release/fabasoad/setup-brainfuck-action?include_prereleases)
+![Functional Tests](https://github.com/fabasoad/setup-brainfuck-action/workflows/Functional%20Tests/badge.svg)
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/fabasoad/setup-brainfuck-action/main.svg)](https://results.pre-commit.ci/latest/github/fabasoad/setup-brainfuck-action/main)
 
-Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at [https://github.com/fabasoad/setup-brainfuck-action](https://github.com/fabasoad/setup-brainfuck-action).
+This action installs one of the brainfuck interpreters called [brainfucky](https://pypi.org/project/brainfucky/).
 
-## Versions
+## Inputs
 
-| Version | Tag | Upstream commit |
-|---------|-----|-----------------|
-| v1.1.1 | [`v1.1.1`](https://github.com/chainguard-actions/fabasoad-setup-brainfuck-action/tree/v1.1.1) | [`32f152d`](https://github.com/fabasoad/setup-brainfuck-action/commit/32f152de650950215c16c68a032bcd1cc53f4fde) |
+<!-- markdownlint-disable MD013 -->
+| Name    | Required | Description                                                                                       | Default    | Possible values        |
+|---------|----------|---------------------------------------------------------------------------------------------------|------------|------------------------|
+| version | No       | Brainfucky library version that can be found [here](https://pypi.org/project/brainfucky/) version | `0.1.dev1` | `0.1.dev1`, `0.1.dev0` |
+<!-- markdownlint-enable MD013 -->
+
+## Example usage
+
+### Workflow configuration
+
+<!-- markdownlint-disable MD013 -->
+```yaml
+name: Test
+
+on: push
+
+jobs:
+  build:
+    name: Brainfuck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@main
+      - uses: fabasoad/setup-brainfuck-action@main
+      - name: Hello World
+        run: |
+          touch ./hello-world.bf
+          echo "++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.++" > ./hello-world.bf
+          echo "+.------.--------.>>+.>++." >> ./hello-world.bf
+          brainfucky --file ./hello-world.bf
+          rm ./hello-world.bf
+```
+<!-- markdownlint-enable MD013 -->
+
+### Result
+
+```shell
+executing file ./hello-world.bf
+Hello World!
+```
 
 ## Privacy
 
