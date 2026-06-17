@@ -1,0 +1,27 @@
+name: Test basic usage (default version)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+      - name: Assert brainfucky is installed
+        run: |
+          echo "Checking brainfucky installation..."
+          if ! pip3 show brainfucky > /dev/null 2>&1; then
+            echo "FAIL: brainfucky package is not installed"
+            exit 1
+          fi
+          echo "PASS: brainfucky is installed"
+      - name: Assert brainfucky version is default (0.1.dev1)
+        run: |
+          INSTALLED_VERSION=$(pip3 show brainfucky | grep -i "^Version:" | awk '{print $2}')
+          echo "actual version: $INSTALLED_VERSION"
+          if [ "$INSTALLED_VERSION" != "0.1.dev1" ]; then
+            echo "FAIL: expected version '0.1.dev1', got '$INSTALLED_VERSION'"
+            exit 1
+          fi
+          echo "PASS: version matches default 0.1.dev1"
