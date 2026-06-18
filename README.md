@@ -1,16 +1,56 @@
-# fabasoad/setup-brainfuck-action
+# Setup Brainfuck
 
-This GitHub action installs one of the brainfuck interpreters called brainfucky
+[![Stand With Ukraine](https://raw.githubusercontent.com/vshymanskyy/StandWithUkraine/main/badges/StandWithUkraine.svg)](https://stand-with-ukraine.pp.ua)
+![Releases](https://img.shields.io/github/v/release/fabasoad/setup-brainfuck-action?include_prereleases)
+![Functional Tests](https://github.com/fabasoad/setup-brainfuck-action/workflows/Functional%20Tests/badge.svg)
+![pre-commit](https://github.com/fabasoad/setup-brainfuck-action/actions/workflows/pre-commit.yml/badge.svg)
 
-Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at [https://github.com/fabasoad/setup-brainfuck-action](https://github.com/fabasoad/setup-brainfuck-action).
+This action installs one of the brainfuck interpreters called [brainfucky](https://pypi.org/project/brainfucky/).
 
-## Versions
+## Prerequisites
 
-| Version | Tag | Upstream commit |
-|---------|-----|-----------------|
-| v1.1.0 | [`v1.1.0`](https://github.com/chainguard-actions/fabasoad-setup-brainfuck-action/tree/v1.1.0) | [`afccb6f`](https://github.com/fabasoad/setup-brainfuck-action/commit/afccb6ff63d9db8e37ab01c3adf302f9abf06649) |
-| v1.1.1 | [`v1.1.1`](https://github.com/chainguard-actions/fabasoad-setup-brainfuck-action/tree/v1.1.1) | [`32f152d`](https://github.com/fabasoad/setup-brainfuck-action/commit/32f152de650950215c16c68a032bcd1cc53f4fde) |
-| v1.1.3 | [`v1.1.3`](https://github.com/chainguard-actions/fabasoad-setup-brainfuck-action/tree/v1.1.3) | [`99c5de3`](https://github.com/fabasoad/setup-brainfuck-action/commit/99c5de3a55e566e4d092a3079c92e24ea5594795) |
+The following tools have to be installed for successful work of this GitHub action:
+[pip3](https://pip.pypa.io/en/stable/).
+
+## Inputs
+
+<!-- prettier-ignore-start -->
+| Name    | Required | Description                                                                                       | Default    | Possible values        |
+|---------|----------|---------------------------------------------------------------------------------------------------|------------|------------------------|
+| version | No       | Brainfucky library version that can be found [here](https://pypi.org/project/brainfucky/) version | `0.1.dev1` | `0.1.dev1`, `0.1.dev0` |
+<!-- prettier-ignore-end -->
+
+## Example usage
+
+### Workflow configuration
+
+```yaml
+name: Test
+
+on: push
+
+jobs:
+  build:
+    name: Brainfuck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@main
+      - uses: fabasoad/setup-brainfuck-action@main
+      - name: Hello World
+        run: |
+          touch ./hello-world.bf
+          echo "++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.++" > ./hello-world.bf
+          echo "+.------.--------.>>+.>++." >> ./hello-world.bf
+          brainfucky --file ./hello-world.bf
+          rm ./hello-world.bf
+```
+
+### Result
+
+```text
+executing file ./hello-world.bf
+Hello World!
+```
 
 ## Privacy
 
