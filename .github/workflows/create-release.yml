@@ -1,0 +1,54 @@
+---
+name: Create release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  create_release:
+    name: Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # v3
+        with:
+          fetch-depth: 0
+      - name: Get latest release tag
+        id: latest_release
+        env:
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          latest_tag=$(curl --silent "https://api.github.com/repos/${REPOSITORY}/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+          echo "::set-output name=tag::${latest_tag}"
+      - name: Get current release tag
+        id: current_release
+        run: echo "::set-output name=tag::${GITHUB_REF/refs\/tags\//}"
+      - name: Build changelog
+        id: changelog
+        env:
+          LATEST_TAG: ${{ steps.latest_release.outputs.tag }}
+          CURRENT_TAG: ${{ steps.current_release.outputs.tag }}
+        run: |
+          body=$(git log --pretty=oneline "${LATEST_TAG}".."${CURRENT_TAG}")
+          body="${body//'%'/'%25'}"
+          body="${body//$'\n'/'%0A'}"
+          body="${body//$'\r'/'%0D'}"
+          echo "::set-output name=body::${body}"
+      - name: Create release
+        id: create_release
+        uses: actions/create-release@0cb9c9b65d5d1901c1f53e5e66eaf4afd303e70e # v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: ${{ steps.current_release.outputs.tag }}
+          body: |
+            # Changelog
+
+            ${{ steps.changelog.outputs.body }}
+          draft: false
+          prerelease: false
