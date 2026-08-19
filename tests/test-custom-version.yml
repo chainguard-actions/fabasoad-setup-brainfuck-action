@@ -10,20 +10,25 @@ jobs:
         uses: .
         with:
           version: "0.1.dev1"
-      - name: Assert brainfucky is installed
+      - name: Assert brainfucky is installed with specified version
         run: |
-          echo "Checking brainfucky installation..."
+          echo "Checking brainfucky installation with custom version..."
           if ! pip3 show brainfucky > /dev/null 2>&1; then
-            echo "FAIL: brainfucky package is not installed"
+            echo "FAIL: brainfucky is not installed"
             exit 1
           fi
-          echo "PASS: brainfucky is installed"
-      - name: Assert brainfucky version matches specified version
-        run: |
-          INSTALLED_VERSION=$(pip3 show brainfucky | grep -i "^Version:" | awk '{print $2}')
-          echo "actual version: $INSTALLED_VERSION"
+          INSTALLED_VERSION="$(pip3 show brainfucky | grep '^Version:' | awk '{print $2}')"
+          echo "Installed version: $INSTALLED_VERSION"
           if [ "$INSTALLED_VERSION" != "0.1.dev1" ]; then
-            echo "FAIL: expected version '0.1.dev1', got '$INSTALLED_VERSION'"
+            echo "FAIL: expected version '0.1.dev1' but got '$INSTALLED_VERSION'"
             exit 1
           fi
-          echo "PASS: version matches specified 0.1.dev1"
+          echo "PASS: brainfucky $INSTALLED_VERSION is installed"
+      - name: Assert brainfucky command is usable
+        run: |
+          echo "Checking brainfucky is importable via Python..."
+          if ! python3 -c "import brainfucky" > /dev/null 2>&1; then
+            echo "FAIL: brainfucky Python module is not importable"
+            exit 1
+          fi
+          echo "PASS: brainfucky module is importable"
