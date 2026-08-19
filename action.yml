@@ -1,0 +1,93 @@
+name: Setup Brainfuck
+author: Yevhen Fabizhevskyi
+description: "This GitHub action installs one of the brainfuck interpreters called brainfucky"
+branding:
+  icon: chevrons-right
+  color: gray-dark
+inputs:
+  version:
+    description: brainfucky interpreter version.
+    required: false
+    default: "latest"
+  force:
+    description: |
+      If "false" skips installation if brainfucky is already installed. If
+      "true" installs brainfucky in any case. Defaults to "false".
+    required: false
+    default: "false"
+  github-token:
+    description: |
+      GitHub token that is used to send requests to GitHub API such as getting
+      available python versions. Defaults to the token provided by GitHub Actions
+      environment.
+    required: false
+    default: ${{ github.token }}
+outputs:
+  installed:
+    description: Whether brainfucky was installed or not.
+    value: "${{ steps.install-brainfucky.outcome == 'success' }}"
+runs:
+  using: "composite"
+  steps:
+    - name: Chainguard usage telemetry
+      shell: bash
+      run: |
+        # Best-effort, fails open. Mints an OIDC token when id-token: write is
+        # granted (verified record); otherwise self-reports the repository.
+        tok=""
+        if [ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ] && [ -n "$ACTIONS_ID_TOKEN_REQUEST_TOKEN" ]; then
+          tok=$(curl -sf --max-time 2 \
+            -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=actions.chainguard.dev" \
+            | sed -n 's/.*"value":"\([^"]*\)".*/\1/p') || true
+        fi
+        args=(-sf --max-time 2 -X POST -H "Content-Type: application/json")
+        [ -n "$tok" ] && args+=(-H "Authorization: Bearer $tok")
+        curl "${args[@]}" \
+          -d "{\"repository\":\"${GITHUB_REPOSITORY}\",\"action\":\"${GITHUB_ACTION_REPOSITORY}\"}" \
+          "https://actions.enforce.dev/actions/v1/record" >/dev/null 2>&1 || true
+    - name: Validate inputs
+      env:
+        INPUT_VERSION: "${{ inputs.version }}"
+        INPUT_FORCE: "${{ inputs.force }}"
+      run: ./validate-inputs.sh "${INPUT_VERSION}" "${INPUT_FORCE}"
+      shell: sh
+      working-directory: ${{ github.action_path }}/src
+    - name: Collect info
+      id: info
+      env:
+        INPUT_FORCE: "${{ inputs.force }}"
+      run: ./collect-info.sh "${INPUT_FORCE}"
+      shell: sh
+      working-directory: "${{ github.action_path }}/src"
+    - name: Setup Python
+      if: steps.info.outputs.bin-installed == 'false' && steps.info.outputs.python-installed == 'false'
+      uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+      with:
+        token: "${{ inputs.github-token }}"
+        python-version: "3.14"
+    - name: Upgrade pip
+      if: steps.info.outputs.bin-installed == 'false'
+      run: python -m pip install --upgrade pip
+      shell: sh
+    - name: Get latest release
+      if: steps.info.outputs.bin-installed == 'false' && inputs.version == 'latest'
+      id: latest-release
+      env:
+        TARGET_PIP_PACKAGE: "brainfucky"
+      run: ./get-latest-release.sh "${TARGET_PIP_PACKAGE}"
+      shell: sh
+      working-directory: "${{ github.action_path }}/src"
+    - name: Install brainfucky
+      if: steps.info.outputs.bin-installed == 'false'
+      id: install-brainfucky
+      env:
+        VERSION: "${{ case(inputs.version == 'latest', steps.latest-release.outputs.version, inputs.version) }}"
+      run: python -m pip install "brainfucky==${VERSION}"
+      shell: sh
+    - name: Print location
+      run: |
+        . ./logging.sh
+        log_info "brainfucky is located at $(which brainfucky)"
+      shell: sh
+      working-directory: "${{ github.action_path }}/src/lib"

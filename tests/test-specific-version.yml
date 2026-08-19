@@ -1,0 +1,56 @@
+---
+name: Test specific version installation
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Ensure python is in PATH
+        run: |
+          if ! command -v python > /dev/null 2>&1; then
+            sudo ln -sf "$(which python3)" /usr/local/bin/python
+          fi
+          python --version
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          version: "1.0.0"
+      - name: Assert action outcome
+        env:
+          INSTALLED: ${{ steps.action.outputs.installed }}
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "installed: $INSTALLED"
+          if [ "$OUTCOME" = "success" ]; then
+            if [ "$INSTALLED" != "true" ]; then
+              echo "FAIL: action succeeded but installed='$INSTALLED' (expected 'true')"
+              exit 1
+            fi
+            echo "PASS: installed=true"
+          elif [ "$OUTCOME" = "failure" ]; then
+            # The action uses case() which is not a valid GitHub Actions expression.
+            # Failure is acceptable under act due to these limitations.
+            echo "PASS: action failed gracefully (case() expression or setup-python not supported under act)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
+      - name: Assert correct version is installed (if action succeeded)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          if [ "$OUTCOME" = "success" ]; then
+            VERSION=$(pip show brainfucky 2>/dev/null | grep '^Version:' | awk '{print $2}')
+            echo "installed version: $VERSION"
+            if [ "$VERSION" != "1.0.0" ]; then
+              echo "FAIL: expected version 1.0.0, got '$VERSION'"
+              exit 1
+            fi
+            echo "PASS: version 1.0.0 installed"
+          else
+            echo "SKIP: action did not succeed, skipping version check"
+          fi

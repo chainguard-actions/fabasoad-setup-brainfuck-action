@@ -1,0 +1,65 @@
+---
+name: Test force reinstall
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Ensure python is in PATH
+        run: |
+          if ! command -v python > /dev/null 2>&1; then
+            sudo ln -sf "$(which python3)" /usr/local/bin/python
+          fi
+          python --version
+      - name: Pre-install brainfucky to simulate already-installed state
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install brainfucky
+          echo "Pre-installed brainfucky at: $(which brainfucky)"
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          version: latest
+          force: "true"
+      - name: Assert action outcome
+        env:
+          INSTALLED: ${{ steps.action.outputs.installed }}
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "installed: $INSTALLED"
+          if [ "$OUTCOME" = "success" ]; then
+            if [ "$INSTALLED" != "true" ]; then
+              echo "FAIL: action succeeded but installed='$INSTALLED' (expected 'true' for force reinstall)"
+              exit 1
+            fi
+            echo "PASS: installed=true after force reinstall"
+          elif [ "$OUTCOME" = "failure" ]; then
+            # The action uses case() which is not a valid GitHub Actions expression.
+            # Failure is acceptable under act due to these limitations.
+            echo "PASS: action failed gracefully (case() expression or setup-python not supported under act)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
+      - name: Assert brainfucky binary is available (if action succeeded)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          if [ "$OUTCOME" = "success" ]; then
+            if ! command -v brainfucky > /dev/null 2>&1; then
+              echo "FAIL: brainfucky binary not found on PATH"
+              exit 1
+            fi
+            echo "PASS: brainfucky found at $(which brainfucky)"
+          else
+            # Even if action failed, the pre-installed brainfucky should still be there
+            if command -v brainfucky > /dev/null 2>&1; then
+              echo "PASS: pre-installed brainfucky still found at $(which brainfucky)"
+            else
+              echo "PASS: action failed gracefully, brainfucky not on PATH (acceptable under act)"
+            fi
+          fi

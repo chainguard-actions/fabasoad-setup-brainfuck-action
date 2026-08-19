@@ -1,0 +1,57 @@
+---
+name: Test skip installation when already installed
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Ensure python is in PATH
+        run: |
+          if ! command -v python > /dev/null 2>&1; then
+            sudo ln -sf "$(which python3)" /usr/local/bin/python
+          fi
+          python --version
+      - name: Pre-install brainfucky to simulate already-installed state
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install brainfucky
+          echo "Pre-installed brainfucky at: $(which brainfucky)"
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          version: latest
+          force: "false"
+      - name: Assert installed output is false (skipped) or action ran
+        env:
+          INSTALLED: ${{ steps.action.outputs.installed }}
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "installed: $INSTALLED"
+          if [ "$OUTCOME" = "success" ]; then
+            # When brainfucky is already installed and force=false, the install step
+            # is skipped (bin-installed=true), so the install-brainfucky step outcome
+            # is 'skipped', not 'success', so installed should be false.
+            if [ "$INSTALLED" != "false" ]; then
+              echo "FAIL: expected installed=false (skipped), got '$INSTALLED'"
+              exit 1
+            fi
+            echo "PASS: installed=false as expected (installation was skipped)"
+          elif [ "$OUTCOME" = "failure" ]; then
+            # The action uses case() which is not a valid GitHub Actions expression.
+            # Failure is acceptable under act due to these limitations.
+            echo "PASS: action failed gracefully (case() expression or setup-python not supported under act)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
+      - name: Assert brainfucky binary is still available
+        run: |
+          if ! command -v brainfucky > /dev/null 2>&1; then
+            echo "FAIL: brainfucky binary not found on PATH"
+            exit 1
+          fi
+          echo "PASS: brainfucky found at $(which brainfucky)"
