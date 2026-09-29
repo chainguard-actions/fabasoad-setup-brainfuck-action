@@ -10,51 +10,27 @@
 
 **Harden Agent Version:** `2`
 
-Action **fabasoad--setup-brainfuck-action/v1.2.1** was hardened automatically. 3 finding(s) were identified and resolved across 1 iteration(s).
+Action **fabasoad--setup-brainfuck-action/v1.2.1** was hardened automatically. 2 finding(s) were identified and resolved across 1 iteration(s).
 
 ## Findings Fixed
 
 ### unpinned-uses (severity: high)
 
-Multiple `uses:` references are pinned to mutable tags or branch names instead of immutable 40-character commit SHAs, making the action vulnerable to supply-chain attacks if the referenced tag/branch is moved or compromised.
-
-Failing references:
-- action.yml: `actions/setup-python@v6`
-- functional-tests.yml: `actions/checkout@v7` (two steps)
-- linting.yml: `fabasoad/reusable-workflows/.github/workflows/wf-pre-commit.yml@main`
-- release.yml: `fabasoad/reusable-workflows/.github/workflows/wf-github-release.yml@main`
-- security.yml: `fabasoad/reusable-workflows/.github/workflows/wf-security-sast.yml@main`
-- sync-labels.yml: `fabasoad/reusable-workflows/.github/workflows/wf-sync-labels.yml@main`
-- update-license.yml: `fabasoad/reusable-workflows/.github/workflows/wf-update-license.yml@main`
+The composite action uses `actions/setup-python@v6`, which is pinned to a mutable tag rather than an immutable 40-character commit SHA. This exposes the action to supply-chain attacks if the tag is moved to a different commit.
 
 Locations:
 
-- `action.yml:47`
-- `.github/workflows/functional-tests.yml:44`
-- `.github/workflows/functional-tests.yml:73`
-- `.github/workflows/linting.yml:9`
-- `.github/workflows/release.yml:8`
-- `.github/workflows/security.yml:18`
-- `.github/workflows/sync-labels.yml:9`
-- `.github/workflows/update-license.yml:9`
+- `action.yml:44`
 
 ### script-injection (severity: high)
 
-Rule (b): In the 'Install brainfucky' step of action.yml, the env var `VERSION` is populated from `inputs.version` (an untrusted caller-controlled input) and then expanded **unquoted** inside the `run:` shell command: `python -m pip install brainfucky==${VERSION}`. An attacker-controlled version string containing shell metacharacters (`;`, `|`, `$()`, etc.) could break out of the pip version specifier and execute arbitrary commands. The fix is to double-quote the expansion: `brainfucky=="${VERSION}"`.
+Rule (b) violation: In the 'Install brainfucky' step, the env var `VERSION` is populated from `${{ case(inputs.version == 'latest', steps.latest-release.outputs.version, inputs.version) }}` — sourcing from `inputs.version` (caller-controlled) and `steps.latest-release.outputs.version` (workflow-controllable). The `run:` block then expands it **unquoted** as `brainfucky==${VERSION}`, allowing an attacker to inject shell metacharacters (e.g. `;`, `|`, `$(...)`) via the `version` input. The fix is to double-quote the expansion: `brainfucky=="${VERSION}"`.
+
+Offending line: `run: python -m pip install brainfucky==${VERSION}`
 
 Locations:
 
-- `action.yml:62`
-
-### script-injection (severity: high)
-
-Rule (a): In the 'Test action completion' step of the `test-force` job in functional-tests.yml, the expression `${{ matrix.force }}` is interpolated **directly** inside a `run:` shell command string (used as the third argument to `test_equal`). Any GitHub Actions expression inside a `run:` block is substituted before the shell sees it, allowing a crafted matrix value to inject arbitrary shell commands. The value should be moved to an `env:` variable and the env var double-quoted in the script instead.
-
-Offending line: `"${{ matrix.force }}"`
-
-Locations:
-
-- `.github/workflows/functional-tests.yml:99`
+- `action.yml:65`
 
 ## Iteration Notes
 
@@ -64,5 +40,5 @@ Locations:
 
 **Notes:**
 
-Fixed all 8 unpinned-uses findings by resolving full commit SHAs via lookup_action_sha: actions/setup-python@v6→ece7cb06..., actions/checkout@v7→3d3c42e5... (2 occurrences), and all 5 fabasoad/reusable-workflows@main references→ecce8eb7.... Fixed 2 script-injection findings: (1) in action.yml, quoted the VERSION env var in the pip install command as "brainfucky==${VERSION}" to prevent shell metacharacter injection; (2) in functional-tests.yml, moved ${{ matrix.force }} from the run block into an env variable MATRIX_FORCE and referenced it as "${MATRIX_FORCE}" in the shell script.
+1. Pinned `actions/setup-python@v6` to immutable SHA `ece7cb06caefa5fff74198d8649806c4678c61a1` with `# v6` comment for readability (action.yml line 44). 2. Double-quoted the `${VERSION}` expansion in the pip install command: changed `brainfucky==${VERSION}` to `"brainfucky==${VERSION}"` to prevent shell injection via caller-controlled `inputs.version` (action.yml line 65).
 
