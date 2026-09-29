@@ -62,7 +62,7 @@ runs:
       working-directory: "${{ github.action_path }}/src"
     - name: Setup Python
       if: steps.info.outputs.bin-installed == 'false' && steps.info.outputs.python-installed == 'false'
-      uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+      uses: chainguard-actions/actions-setup-python@6e055a15c9b620aae4c8d0a8b85a69f93f1cce70 # v6
       with:
         token: "${{ inputs.github-token }}"
         python-version: "3.14"
